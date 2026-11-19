@@ -1,0 +1,201 @@
+PARTE 2: Templates com EJS
+O que é um template? (slides 15 e 16)
+
+Pense num modelo de certificado: o texto é sempre o mesmo, só o nome muda, e tem um espaço em branco para preencher. Um template é isso: um HTML com “espaços em branco” que o servidor preenche com os dados antes de mandar para o navegador.
+
+O EJS é a ferramenta que faz esse preenchimento.
+
+As duas tags do EJS: (slide 18)
+Tag	         |   O que faz	                                |      Exemplo
+<%= ... %>	 |  Mostra um valor na página	                |     <h1>Olá, <%= nome %>!</h1>
+<% ... %>	 |  Executa código (for, if) sem mostrar nada	|     <% for (...) { %>
+
+Dica para lembrar: o = é de “mostra igual na tela”.
+
+- Instalar:
+
+Você já instalou o EJS no roteiro da Aula 09 (aquele npm install express ejs body-parser colors). Se quiser conferir, abra o package.json e procure "ejs" em dependencies.
+
+🧪 Passo 0: preparar o servidor
+
+Desta vez vou te dar o servidor.js já com tudo que vamos usar nos 3 passos. Assim você reinicia o servidor uma vez só. Substitua o arquivo inteiro:
+
+var http = require('http');
+var express = require('express');
+var colors = require('colors');
+var bodyParser = require('body-parser');
+
+var app = express();
+app.use(express.static('./public'));
+app.use(bodyParser.urlencoded({ extended: false }));
+app.use(bodyParser.json());
+app.set('view engine', 'ejs');   // NOVO: vamos usar EJS
+app.set('views', './views');     // NOVO: os templates ficam na pasta views
+
+// Passo 1: saudação, agora com EJS
+app.get('/saudacao', function (requisicao, resposta) {
+  var nome = requisicao.query.nome;
+  resposta.render('saudacao', { nome: nome, metodo: 'GET' });
+});
+
+app.post('/saudacao', function (requisicao, resposta) {
+  var nome = requisicao.body.nome;
+  resposta.render('saudacao', { nome: nome, metodo: 'POST' });
+});
+
+// Passo 2: cadastro (o exemplo do slide 22)
+app.get('/cadastro', function (requisicao, resposta) {
+  var nome = requisicao.query.nome;
+  var sobrenome = requisicao.query.sobrenome;
+  var nascimento = requisicao.query.nascimento;
+  var civil = requisicao.query.civil;
+
+  resposta.render('resposta_cadastro', { nome, sobrenome, nascimento, civil });
+});
+
+// Passo 3: contagem com for (slide 26)
+app.get('/contar', function (requisicao, resposta) {
+  var tamanho = requisicao.query.tamanho;
+  resposta.render('contagem', { tamanho });
+});
+
+var server = http.createServer(app);
+server.listen(3000);
+
+console.log("servidor rodando...".rainbow);
+
+As duas linhas app.set (slide 20) dizem ao Express: “use o EJS, e procure os templates na pasta views”.
+Reinicie o servidor (Ctrl + C e node servidor.js).
+
+🧪 Passo 1: a primeira página EJS
+Repare na diferença: antes, a rota respondia com resposta.send('<h1>Olá...'). Agora ela usa:
+
+js
+resposta.render('saudacao', { nome: nome, metodo: 'GET' });
+
+Isso quer dizer: “pegue o arquivo views/saudacao.ejs, preencha nome e metodo, e mande o HTML pronto”. Não precisa escrever o .ejs no render.
+Crie o arquivo views/saudacao.ejs (dentro da pasta views, e não da public):
+
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Saudação</title>
+</head>
+<body>
+  <h1>Olá, <%= nome %>!</h1>
+  <p>Seus dados vieram por <%= metodo %>.</p>
+  <a href="formulario.html">Voltar ao formulário</a>
+</body>
+</html>
+
+⚠️ Se usar o Bloco de Notas, salve com Tipo: Todos os arquivos. Senão vira saudacao.ejs.txt.
+
+Teste: acesse localhost:3000/formulario.html e envie os dois formulários, o GET e o POST. ✅ Agora a resposta é uma página de verdade, com título, parágrafo e link.
+
+🔍 Experimento revelador: na página de resposta, aperte Ctrl + U para ver o código-fonte. Procure o <%= nome %>... ele não está lá! No lugar dele aparece o seu nome. O navegador nunca vê o EJS: o servidor monta tudo antes e manda só HTML pronto. É isso que torna a página dinâmica.
+
+🧪 Passo 2: o exemplo completo do professor (slides 21 a 25)
+
+a) No public/formulario.html, adicione o formulário de cadastro antes do </body>:
+
+html
+<h2>Cadastrar usuário</h2>
+<form method="get" action="/cadastro">
+  <p>Nome: <input type="text" name="nome"></p>
+  <p>Sobrenome: <input type="text" name="sobrenome"></p>
+  <p>Nascimento: <input type="date" name="nascimento"></p>
+  <p>Estado civil: <input type="text" name="civil"></p>
+  <input type="submit" value="Salvar">
+</form>
+
+b) Crie views/resposta_cadastro.ejs (slide 24):
+
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Resposta</title>
+  <link href="estilo.css" rel="stylesheet">
+</head>
+<body>
+  <h1>Resposta para o usuário:</h1>
+  <p>Nome: <%= nome %></p>
+  <p>Sobrenome: <%= sobrenome %></p>
+  <p>Nascimento: <%= nascimento %></p>
+  <p>Estado civil: <%= civil %></p>
+</body>
+</html>
+
+c) Crie public/estilo.css (slide 25):
+
+css
+body {
+  background-color: lightskyblue;
+}
+
+Teste: preencha o cadastro e clique em Salvar. ✅ A página de resposta aparece azul, com os seus dados.
+
+Três coisas para reparar:
+
+O atalho do slide 22: { nome, sobrenome, nascimento, civil } é o mesmo que escrever { nome: nome, sobrenome: sobrenome, ... }. Quando a variável e o “buraco” do template têm o mesmo nome, dá para escrever uma vez só.
+O CSS funcionou numa página EJS! O template está na views, mas o estilo.css está na public, e o express.static entrega ele normalmente. Lembra da página /hora sem visual? Era isso que faltava. Com EJS, a página dinâmica pode ter o mesmo visual do resto do site.
+A data aparece como 2005-03-20 (ano-mês-dia). É o formato que o input type="date" envia. Está certo.
+
+Bônus: coloque o mesmo <link href="estilo.css" rel="stylesheet"> no saudacao.ejs e veja a saudação ficar azul também.
+
+🧪 Passo 3: for no EJS (slide 26)
+
+Crie views/contagem.ejs:
+
+html
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Contagem</title>
+  <link href="estilo.css" rel="stylesheet">
+</head>
+<body>
+  <h1>Contando até <%= tamanho %></h1>
+
+  <% for (var i = 1; i <= tamanho; i++) { %>
+    <div><%= i %></div>
+  <% } %>
+</body>
+</html>
+
+Teste direto pela URL (rotas GET aceitam isso, lembra?): localhost:3000/contar?tamanho=5
+✅ Aparecem os números de 1 a 5. Troque para tamanho=20 e veja a página crescer.
+
+Repare na mistura das tags:
+
+As linhas com <% %>, sem o =, controlam a repetição e não aparecem na tela.
+O <%= i %>, com o =, mostra o número a cada volta do for.
+O <div> no meio é repetido a cada volta.
+
+O if funciona do mesmo jeito, e você vai precisar dele nos exercícios:
+
+html
+<% if (idade >= 18) { %>
+  <p>Maior de idade</p>
+<% } else { %>
+  <p>Menor de idade</p>
+<% } %>
+
+Erros comuns do EJS:
+Mensagem	                 |           O que fazer
+Failed to lookup view "..."	 |   O arquivo .ejs não está na pasta views, o nome está diferente do render, ou foi salvo                            salvo como .ejs.txt
+nome is not defined	         |  Você usou <%= nome %> no template, mas não mandou o nome no render
+Cannot GET /cadastro	     |  O servidor não foi reiniciado depois de mudar o servidor.js
+
+
+
+O if/else no EJS sempre tem este formato, com três tags:
+
+html
+<% if (condição) { %>
+    HTML que aparece se for VERDADE
+<% } else { %>
+    HTML que aparece se for MENTIRA
+<% } %>

@@ -1,0 +1,141 @@
+📗 Aula 12: Update, Delete e Web API
+
+⏱️ Seu plano de 1h30:
+
+Tempo	O quê
+0:00 – 0:10	Ler as Partes 1 a 3
+0:10 – 0:35	Prática: Update e Delete no meu-projeto
+0:35 – 0:55	Prática: Web API (Parte 4)
+0:55 – 1:00	Quiz
+1:00 – 1:30	Exercícios
+
+Use o meu-projeto da Aula 11 (o dos usuários e produtos). Você vai só acrescentar coisas nele.
+
+Parte 1: O que muda (2 min)
+Letra	Comando	Status
+C	insertOne	✅ Aula 11
+R	find	✅ Aula 11
+U	updateOne	🆕 hoje
+D	deleteOne	🆕 hoje
+
+E tem uma novidade no jeito de escrever: o professor trocou o callback por async/await. É o jeito moderno, que não fica riscado no VS Code.
+
+Callback x await: a analogia da pizza 🍕
+
+Callback (Aula 11): você pede pizza por telefone e diz “me liga quando chegar”. A função roda depois, quando o banco “liga de volta”.
+
+js
+usuarios.insertOne(data, function (err) {
+  if (err) { ... } else { ... }
+});
+
+Await (Aula 12): você fica no balcão esperando a pizza sair. A próxima linha só roda quando o banco termina, e o resultado vem na sua mão.
+
+js
+try {
+  const result = await usuarios.insertOne(data);   // espera aqui
+  // ...usa o result...
+} catch (err) {
+  // se QUALQUER linha do try der erro, cai aqui
+}
+
+3 regras para não errar:
+
+O await só funciona dentro de uma função marcada com async: app.post("/rota", async function (req, resp) {
+O try/catch substitui o if (err). Leia como: “tente fazer isto; se der problema, vá para o catch”.
+O resultado vem numa variável: const result = await ...
+Parte 2: UPDATE, alterar um documento (4 min)
+
+Analogia: corrigir uma ficha da gaveta. Primeiro você acha a ficha e depois usa a caneta corretiva só na informação que mudou.
+
+js
+gaveta.updateOne( QUEM vai mudar , O QUE vai mudar )
+//                 └─ filtro ─┘    └─ $set ─┘
+
+O código do slide, para trocar a senha (vai no server.js, acima do app.listen):
+
+js
+app.post("/atualizar_usuario", async function (req, resp) {
+  try {
+    // 1. QUEM: o usuário com este login E esta senha atual
+    var filtro = { db_login: req.body.login, db_senha: req.body.senha };
+    // 2. O QUE: troque SÓ a senha pela nova
+    var newData = { $set: { db_senha: req.body.novasenha } };
+
+    // 3. Espera o banco atualizar
+    const result = await usuarios.updateOne(filtro, newData);
+    console.log(result);
+
+    if (result.matchedCount == 0) {
+      resp.render("resposta_usuario", { resposta: "Usuário/senha atual não encontrado!" });
+    } else {
+      resp.render("resposta_usuario", { resposta: "Usuário atualizado com sucesso!" });
+    }
+  } catch (err) {
+    console.error(err);
+    resp.render("resposta_usuario", { resposta: "Erro ao atualizar usuário!" });
+  }
+});
+
+O que entender:
+
+$set quer dizer “troque só estes campos”. O db_nome e o db_login continuam iguais. Sem o $set, o MongoDB dá erro.
+O console.log(result) mostra algo assim no terminal:
+{ acknowledged: true, matchedCount: 1, modifiedCount: 1, ... }
+matchedCount é quantos documentos bateram com o filtro. Se for 0, ninguém foi encontrado (login ou senha atual errados). É o “primo” do items.length == 0 da Aula 11.
+
+Formulário (public/atualizar.html):
+
+html
+<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><title>Trocar senha</title></head>
+<body>
+  <h1>Trocar senha</h1>
+  <form action="/atualizar_usuario" method="post">
+    <input name="login" placeholder="Login"><br>
+    <input name="senha" type="password" placeholder="Senha atual"><br>
+    <input name="novasenha" type="password" placeholder="Nova senha"><br>
+    <button type="submit">Atualizar</button>
+  </form>
+</body>
+</html>
+
+
+Parte 3: DELETE, apagar um documento (4 min)
+
+Analogia: achar a ficha e jogar no lixo. Só precisa do QUEM:
+
+js
+app.post("/remover_usuario", async function (req, resp) {
+  try {
+    // 1. QUEM: o usuário com este login E esta senha
+    var filtro = { db_login: req.body.login, db_senha: req.body.senha };
+
+    // 2. Espera o banco apagar
+    const result = await usuarios.deleteOne(filtro);
+    console.log(result);
+
+    if (result.deletedCount == 0) {
+      resp.render("resposta_usuario", { resposta: "Usuário/senha não encontrado!" });
+    } else {
+      resp.render("resposta_usuario", { resposta: "Usuário removido com sucesso!" });
+    }
+  } catch (err) {
+    console.error(err);
+    resp.render("resposta_usuario", { resposta: "Erro ao remover usuário!" });
+  }
+});
+deletedCount é quantos documentos foram apagados: 0 = ninguém encontrado, 1 = apagado.
+
+🚨 CUIDADO: deleteOne({}), com filtro vazio, apaga o primeiro documento da gaveta, seja ele qual for! No find, o {} significa “todos”. No delete, um filtro vazio é perigoso.
+
+Formulário (public/remover.html): igual ao de login, mas com action="/remover_usuario" e o botão “Remover”.
+
+⚠️ Pegadinha do slide: no slide 11 da Aula 12 está escrito dbo.Collection("usuarios"), com C maiúsculo. Está errado! O comando é collection, com c minúsculo. Se copiar do slide, dá erro.
+
+✅ Teste (Update + Delete)
+Reinicie o servidor (Ctrl + C e node server.js).
+Em localhost/atualizar.html, troque a senha de um usuário.
+Em localhost/login.html, faça login com a senha antiga (deve falhar ❌) e com a nova (deve funcionar ✅).
+Em localhost/remover.html, remova esse usuário e confira no Data Explorer que ele sumiu.

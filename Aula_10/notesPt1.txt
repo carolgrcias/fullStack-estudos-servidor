@@ -1,0 +1,144 @@
+Parte 1 (agora): enviar dados com formulário, por GET e por POST.
+Parte 2 (depois): transformar a resposta numa página de verdade com EJS.
+
+PARTE 1: Formulários, GET e POST
+A ideia (slides 4 e 5)
+
+Até agora, o servidor só entregava arquivos prontos. Agora o usuário vai dizer o que quer, preenchendo um formulário, e o servidor monta a resposta com base nisso. Isso é uma página dinâmica.
+
+A tag <form>:
+<form action="/saudacao" method="get">
+  <input type="text" name="nome">
+  <input type="submit" value="Enviar">
+</form>
+
+- action diz para onde os dados vão (qual rota do servidor).
+- method diz como os dados vão: get ou post.
+- name é o nome do dado. O servidor encontra o valor por ele.
+
+🧪 Passo 1: criar o formulário
+
+Crie o arquivo public/formulario.html:
+
+html
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Formulário</title>
+</head>
+<body>
+  <h1>Testando formulários</h1>
+
+  <h2>Formulário GET</h2>
+  <form action="/saudacao" method="get">
+    <p>Nome: <input type="text" name="nome"></p>
+    <input type="submit" value="Enviar">
+  </form>
+</body>
+</html>
+
+🧪 Passo 2: o servidor recebe o GET (slides 12 e 13)
+
+Substitua o servidor.js inteiro (Ctrl + A, apague e cole). A parte nova está marcada com // NOVO:
+
+js
+var http = require('http');
+var express = require('express');
+var colors = require('colors');
+
+var app = express();
+app.use(express.static('./public'));
+
+// NOVO: recebe o formulário GET
+app.get('/saudacao', function (requisicao, resposta) {
+  var nome = requisicao.query.nome;
+  console.log('GET recebeu: ' + nome);
+  resposta.send('<h1>Olá, ' + nome + '! (veio por GET)</h1>');
+});
+
+var server = http.createServer(app);
+server.listen(3000);
+
+console.log("servidor rodando...".rainbow);
+
+O que a rota faz, linha por linha:
+
+- app.get('/saudacao', ...): “quando chegar um pedido GET em /saudacao, rode esta função”.
+- requisicao.query.nome: pega o dado que veio na URL com o nome 'nome'.
+- console.log(...): mostra no terminal o que chegou, para você ver o servidor trabalhando.
+- resposta.send(...): manda a resposta de volta para o navegador.
+
+Reinicie o servidor: Ctrl + C e depois node servidor.js.
+
+🧪 Passo 3: testar e observar
+Acesse localhost:3000/formulario.html, digite seu nome e clique em Enviar.
+✅ No navegador aparece “Olá, (seu nome)!”.
+✅ No terminal aparece GET recebeu: (seu nome).
+Olhe a barra de endereço: localhost:3000/saudacao?nome=Carol. O dado foi na URL (slide 9). Repare no ? antes do dado.
+Mude a URL na mão: troque para ?nome=Maria e aperte Enter. Funcionou sem usar o formulário! Por isso senha nunca vai por GET: ela ficaria à vista de qualquer um.
+Erre de propósito: no formulario.html, apague o name="nome" do input, salve, recarregue a página e envie de novo. Vai aparecer “Olá, undefined!”. Sem name, o dado não é enviado. Depois coloque o name de volta.
+
+🧪 Passo 4: agora por POST (slides 10, 13 e 14)
+
+No formulario.html, logo abaixo do primeiro formulário (antes do </body>), adicione:
+
+html
+<h2>Formulário POST</h2>
+<form action="/saudacao" method="post">
+  <p>Nome: <input type="text" name="nome"></p>
+  <input type="submit" value="Enviar">
+</form>
+
+No servidor, o POST precisa de duas coisas novas:
+
+As linhas do body-parser, que ensinam o servidor a ler os dados que vêm no corpo da requisição.
+Uma rota app.post, que lê os dados com requisicao.body, e não com query.
+
+Substitua o servidor.js inteiro de novo:
+
+js
+var http = require('http');
+var express = require('express');
+var colors = require('colors');
+var bodyParser = require('body-parser');                // NOVO
+
+var app = express();
+app.use(express.static('./public'));
+app.use(bodyParser.urlencoded({ extended: false }));    // NOVO
+app.use(bodyParser.json());                             // NOVO
+
+app.get('/saudacao', function (requisicao, resposta) {
+  var nome = requisicao.query.nome;
+  console.log('GET recebeu: ' + nome);
+  resposta.send('<h1>Olá, ' + nome + '! (veio por GET)</h1>');
+});
+
+// NOVO: recebe o formulário POST
+app.post('/saudacao', function (requisicao, resposta) {
+  var nome = requisicao.body.nome;
+  console.log('POST recebeu: ' + nome);
+  resposta.send('<h1>Olá, ' + nome + '! (veio por POST)</h1>');
+});
+
+var server = http.createServer(app);
+server.listen(3000);
+
+console.log("servidor rodando...".rainbow);
+
+Reinicie o servidor (Ctrl + C e node servidor.js).
+
+Repare que as duas rotas têm o mesmo endereço, /saudacao. Uma é app.get e a outra é app.post, e o Express escolhe qual chamar pelo method do formulário. O slide 22 faz igual com a rota /inicio.
+
+🧪 Passo 5: comparar GET e POST:
+1. Envie o formulário POST. Olhe a URL: aparece só localhost:3000/saudacao, sem o nome.
+2. Então onde o nome foi parar? Aperte F12, vá na aba Network, envie de novo e clique em saudacao. Abra a aba Payload: lá está nome: (seu nome). Ele foi no corpo da requisição (slide 10).
+
+Resumo para guardar:
+No formulário	        No servidor	                                 Onde está o dado
+
+method="get"	app.get + requisicao.query.nome	                    Na URL (?nome=...)
+method="post"	app.post + requisicao.body.nome + body-parser	    No corpo da requisição
+name="nome"	    .nome	                                            O nome tem que ser igual nos dois lados
+
+⚠️ Toda rota precisa responder com resposta.send (ou outra resposta). Se esquecer, a página fica carregando para sempre.

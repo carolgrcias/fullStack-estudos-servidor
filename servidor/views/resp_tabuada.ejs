@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Tabuada</title>
+    <link href="estilo.css" rel="stylesheet">
+</head>
+<body>
+    <h1>Tabuada do <%= numero %></h1>
+
+    <% for (var i = 1; i <= 10; i++) { %>
+        <div><%= numero %> x <%= i %> = <%= numero * i %></div>
+    <% } %> 
+    
+    <a href="tabuada.html">Ver outra tabuada</a>
+    
+</body>
+</html>

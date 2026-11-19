@@ -1,0 +1,370 @@
+📘 Aula 11: Banco de Dados (Create e Read)
+Parte 1: A ideia em 2 minutos
+
+Imagine que você abriu uma loja e anota os clientes num caderno. Funciona bem até você ter 5 mil clientes e precisar achar “aquele João que comprou em março”
+Um *banco de dados* resolve exatamente isso: *guardar* informações de forma organizada e *encontrar* rápido quando precisar. Antigamente as empresas usavam papel e pastas. Hoje é tudo digital.
+
+Existem dois grandes “estilos” de banco:
+
+	         |       Relacional (SQL)	                              |      Não relacional (NoSQL)
+Como guarda  |  Em tabelas (linhas e colunas), tipo planilha do Excel | De outras formas. No MongoDB, em documentos JSON
+Vocabulário	 |  linha = registro/tupla · coluna = campo/atributo	  | documento · campo
+Exemplos	 |  MySQL, PostgreSQL, Oracle	                          | MongoDB, Redis
+
+SGBD (Sistema Gerenciador de Banco de Dados) é o programa que cuida do banco para você. Você pede “salva isso” ou “me acha aquilo” e ele faz. O MongoDB é um SGBD: gratuito, open-source e fácil de usar.
+
+Parte 2: Como o MongoDB organiza as coisas.
+Pense num armário de fichas:
+
+🗄️ Banco de dados  (ex: exemplo_bd)   → o armário
+   └── 📂 Collection (ex: usuarios)   → uma gaveta
+         └── 📄 Documento             → uma ficha dentro da gaveta
+
+Cada documento é um JSON, ou seja, pares de "chave": valor. Este é o exemplo do slide, de uma collection Livros:
+
+{
+  "codigo": "12345",
+  "nome": "O Senhor dos Anéis",
+  "editora": "Harper Collins",
+  "ISBN": 8595086354,
+  "paginas": 1568,
+  "autor": "Tolkien, J.R.R."
+}
+👀 Repare: texto vai entre aspas, número vai sem aspas.
+
+Traduzindo do relacional para o Mongo:
+- Tabela Produtos → collection produtos
+- Uma linha (01, Teclado, 110,00) → um documento { "codigo": "01", "descricao": "Teclado", "valor": 110.00 }
+- Coluna → campo
+MongoDB Compass é o “explorador de arquivos” do banco: uma tela gráfica onde você vê, adiciona e apaga documentos, collections e bancos inteiros. É ali que você confere se o seu código funcionou
+-------------------------------------------------------------------------------------------------------------------
+Parte 3: CRUD, as 4 operações de qualquer sistema
+Letra	Significa	Em português	Método no Mongo	    Quando
+C	    Create	    Criar	        insertOne	        ✅ Hoje
+R	    Read	    Ler/consultar	find	            ✅ Hoje
+U	    Update	    Atualizar	    updateOne	        Aula 12
+D	    Delete	    Apagar	        deleteOne	        Aula 12
+
+Todo app é CRUD por baixo. No Instagram, por exemplo: criar conta (C), ver o feed (R), editar perfil (U), apagar um post (D).
+-------------------------------------------------------------------------------------------------------------------
+Parte 4: Mão na massa 🛠️
+Vamos montar um mini sistema de cadastro e login.
+
+meu-projeto/
+├── server.js
+├── public/
+│   ├── cadastro.html
+│   └── login.html
+└── views/
+    └── resposta_usuario.ejs
+
+Passo 1: Criar a pasta do projeto:
+Crie uma pasta chamada meu-projeto onde preferir (em Documentos, por exemplo), do jeito normal, pelo explorador de arquivos.
+
+Passo 2: Abrir a pasta no VS Code:
+No VS Code: Arquivo → Abrir Pasta... (File → Open Folder) e escolha meu-projeto.
+A pasta aparece vazia na barra lateral esquerda.
+
+Passo 3: Abrir o terminal:
+No menu: Terminal → Novo Terminal (atalho Ctrl + ').
+Vai aparecer uma janela embaixo com algo assim:
+
+PS C:\Users\SeuNome\Documents\meu-projeto>
+
+👉 Confira se o final mostra meu-projeto. Isso indica que o terminal está “dentro” da pasta certa. É aqui que você digita os comandos.
+
+Passo 4: Iniciar o projeto e instalar as bibliotecas
+Digite um comando de cada vez e aperte Enter depois de cada um:
+
+bash
+npm init -y
+
+Isso cria o arquivo package.json, a “ficha de identidade” do projeto. Esqueci esse comando na explicação anterior, desculpa!
+
+bash
+npm install express ejs mongodb@4.12
+
+Espere terminar. Depois disso aparecem sozinhos na barra lateral: a pasta node_modules e o arquivo package-lock.json. Não mexa neles.
+❌ Se aparecer “npm não é reconhecido como comando”, o Node.js não está instalado. Baixe a versão LTS em nodejs.org, instale, feche e abra o VS Code de novo e repita este passo.
+
+Passo 5: Criar as subpastas e os arquivos:
+Na barra lateral do VS Code, passe o mouse sobre o nome do projeto e use os ícones 📄+ (novo arquivo) e 📁+ (nova pasta). Crie isto:
+
+meu-projeto/
+├── node_modules/          ← já criada pelo npm
+├── package.json           ← já criado pelo npm
+├── package-lock.json      ← já criado pelo npm
+├── server.js              ← CRIE (arquivo)
+├── public/                ← CRIE (pasta)
+│   ├── cadastro.html      ← CRIE dentro de public
+│   └── login.html         ← CRIE dentro de public
+└── views/                 ← CRIE (pasta)
+    └── resposta_usuario.ejs  ← CRIE dentro de views
+
+⚠️ Os nomes public e views precisam ser exatamente esses, porque o Express procura por eles.
+
+Passo 6: Colar o código em cada arquivo
+Na aula o código veio em pedaços. Aqui está cada arquivo completo, é só copiar e colar.
+
+server.js:
+
+js
+// ===== 1. Importar as bibliotecas =====
+var express = require("express");
+var mongodb = require("mongodb");
+
+// ===== 2. Configurar o Express =====
+var app = express();
+app.use(express.static("public"));               // libera os .html da pasta public
+app.use(express.urlencoded({ extended: true })); // permite ler req.body dos formulários
+app.set("view engine", "ejs");                   // as páginas de resposta ficam em views
+
+// ===== 3. Conectar ao MongoDB =====
+const MongoClient = mongodb.MongoClient;
+const uri = `COLE_AQUI_SUA_STRING_DE_CONEXAO`;   // veja o Passo 7
+const client = new MongoClient(uri, { useNewUrlParser: true });
+
+// ===== 4. Abrir o banco e a collection =====
+var dbo = client.db("exemplo_bd");
+var usuarios = dbo.collection("usuarios");
+
+/*Pegadinha clássica: o Mongo é “preguiçoso”. O banco e a collection só aparecem no Compass depois que você salva o primeiro documento. Se não aparecer antes disso, não é erro!*/
+
+// ===== 5. CREATE: cadastrar usuário =====
+app.post("/cadastrar_usuario", function (req, resp) {
+  var data = { db_nome: req.body.nome, db_login: req.body.login, db_senha: req.body.senha };
+
+  usuarios.insertOne(data, function (err) {
+    if (err) {
+      console.log(err);
+      resp.render("resposta_usuario.ejs", { resposta: "Erro ao cadastrar usuário!" });
+    } else {
+      resp.render("resposta_usuario.ejs", { resposta: "Usuário cadastrado com sucesso!" });
+    }
+  });
+});
+
+// ===== 6. READ: logar usuário =====
+app.post("/logar_usuario", function (req, resp) {
+  // 1. O FILTRO: "procure fichas com ESTE login E ESTA senha"
+  var data = { db_login: req.body.login, db_senha: req.body.senha };
+
+  usuarios.find(data).toArray(function (err, items) {
+    console.log(items);
+    if (err) {
+      resp.render("resposta_usuario.ejs", { resposta: "Erro ao logar usuário!" });
+    } else if (items.length == 0) {
+      resp.render("resposta_usuario.ejs", { resposta: "Usuário/senha não encontrado!" });
+    } else {
+      resp.render("resposta_usuario.ejs", { resposta: "Usuário logado com sucesso!" });
+    }
+  });
+});
+
+/*O que realmente importa aqui:
+- req.body.nome é o valor digitado no input com name="nome". O nome tem que bater exatamente, e maiúscula faz diferença.
+- db_nome: é o nome do campo no banco. O prefixo db_ é só uma convenção do professor para você não confundir “o que vem do formulário” com “o que está no banco”.
+- insertOne(data, callback) significa “insira UM documento”. O callback roda quando o banco termina. Se err vier preenchido, deu problema*/
+
+// ===== 7. Ligar o servidor (sempre no final) =====
+app.listen(80, function () {
+  console.log("Servidor rodando em http://localhost");
+});
+
+🧠 Pense assim: o MongoClient é o telefone que liga seu servidor ao banco, e a uri é o número para onde ele liga.
+Dica: para o Mongo local, prefira 127.0.0.1 em vez de localhost. Nas versões novas do Node, localhost às vezes dá erro de conexão.
+
+O que entender:
+- find(filtro) significa “me traga todos os documentos que tenham esses valores”. Com vários campos no filtro, todos precisam bater (funciona como um E).
+- .toArray(...): o find devolve uma espécie de “fila de resultados”, e o toArray transforma essa fila num array normal do JavaScript.
+- items.length == 0 quer dizer lista vazia. Ninguém foi encontrado, então login ou senha estão errados.
+-------------------------------------------------------------------------------------------------------------------
+public/cadastro.html
+
+html
+<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><title>Cadastro</title></head>
+<body>
+  <h1>Cadastro</h1>
+  <form action="/cadastrar_usuario" method="post">
+    <input name="nome" placeholder="Nome"><br>
+    <input name="login" placeholder="Login"><br>
+    <input name="senha" type="password" placeholder="Senha"><br>
+    <button type="submit">Cadastrar</button>
+  </form>
+  <a href="/login.html">Já tenho conta</a>
+</body>
+</html>
+
+---------------------------------------------------------------------------------------------------------------
+public/login.html
+
+html
+<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><title>Login</title></head>
+<body>
+  <h1>Login</h1>
+  <form action="/logar_usuario" method="post">
+    <input name="login" placeholder="Login"><br>
+    <input name="senha" type="password" placeholder="Senha"><br>
+    <button type="submit">Entrar</button>
+  </form>
+  <a href="/cadastro.html">Criar conta</a>
+</body>
+</html>
+
+---------------------------------------------------------------------------------------------------------------
+views/resposta_usuario.ejs
+
+html
+<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><title>Resposta</title></head>
+<body>
+  <h1><%= resposta %></h1>
+  <a href="/cadastro.html">Cadastro</a> | <a href="/login.html">Login</a>
+</body>
+</html>
+
+💾 Salve todos os arquivos com Ctrl + S. Um arquivo não salvo fica com uma bolinha branca na aba.
+
+---------------------------------------------------------------------------------------------------------------
+Passo 7: Trocar a string de conexão
+No server.js, substitua COLE_AQUI_SUA_STRING_DE_CONEXAO por uma destas opções:
+
+- Se você usa o MongoDB online (Atlas), que é o que a aula usa: no site do Atlas, clique em Connect → Drivers e copie a string, que tem esta cara: mongodb+srv://seuusuario:<db_password>@cluster0.xxxxx.mongodb.net/ Troque <db_password> pela sua senha (sem os sinais < >).
+- Se você instalou o MongoDB no seu computador: use mongodb://127.0.0.1:27017
+
+-----------------------------------------------------------------------------------------------------------------
+Passo 8: Rodar o servidor
+No mesmo terminal, digite:
+
+bash
+node server.js
+
+Se aparecer Servidor rodando em http://localhost, deu certo ✅. O terminal fica “preso” mesmo, e é assim que tem que ser: o servidor está ligado.
+🔁 Mudou algo no server.js? Desligue com Ctrl + C no terminal e rode node server.js de novo. O servidor não percebe as mudanças sozinho.
+-----------------------------------------------------------------------------------------------------------------
+Passo 9: Testar
+- Abra o navegador em http://localhost/cadastro.html e cadastre alguém.
+- Depois vá em http://localhost/login.html e entre com esse login e senha.
+- Abra o Compass, conecte com a mesma string do Passo 7 e veja exemplo_bd → usuarios: o documento estará lá 🎉
+Atalho sem instalar nada: também dá para ver os dados direto no site. Na página do seu cluster, procure o botão Browse Collections (em algumas versões do site ele se chama Data Explorer, no menu da esquerda). Ele mostra os mesmos bancos e documentos. 
+-----------------------------------------------------------------------------------------------------------------
+Exercício 2: Um armário novo
+Escreva as duas linhas que abrem o banco loja e a collection produtos.
+
+Exercício 3: CREATE de produto
+Crie o formulário cadastro_produto.html com os campos descricao, valor e categoria. Depois crie a rota POST /cadastrar_produto, que salva o produto com insertOne e responde “Produto cadastrado!” ou “Erro ao cadastrar produto!”.
+
+Exercício 4: READ de produto
+Crie a rota POST /buscar_produto. Ela recebe a descricao digitada num formulário e responde “Produto encontrado!” ou “Produto não encontrado!”.
+
+Exercício 5: Caça aos bugs 🐛
+O formulário tem <input name="login">. Mesmo assim, este código tem 4 erros. Ache todos:
+
+js
+app.post("/logar_usuario", function(req, resp) {
+  var data = { db_login: req.body.Login, db_senha: req.body.senha };
+
+  usuarios.find(data, function(err, items) {
+    if (items.length = 0) {
+      resp.render('resposta_usuario.ejs', {resposta: "Não encontrado!"})
+    } else {
+      resp.render('resposta_usuario.ejs', {resposta: "Logado!"})
+    }
+  });
+});
+
+Desafio bônus (listar todos):
+
+- Crie views/lista_produtos.ejs e uma rota app.get("/listar_produtos", ...).
+- Para mandar a lista para o EJS, use resp.render("lista_produtos.ejs", { items: items }).
+- Teste em localhost/listar_produtos.
+
+🔁 Lembrete: sempre que mexer no server.js, salve com Ctrl + S, pare o servidor com Ctrl + C e rode node server.js de novo. Os arquivos .html não precisam disso: basta atualizar a página no navegador.
+
+🛠️ Passo a passo
+Passo 1: Instalar o dotenv
+
+O dotenv é a biblioteca que sabe abrir o cofre. No terminal, dentro de Servidor:
+
+bash
+npm install dotenv
+
+Depois confira se "dotenv" apareceu no package.json, em "dependencies".
+
+Passo 2: Criar o cofre (.env)
+No VS Code, clique com o botão direito na pasta Servidor → New File.
+Dê o nome .env: começa com ponto, sem nada antes e sem extensão (não é .env.txt!).
+Dentro dele, escreva uma linha só, colando a sua string completa com a senha:
+MONGO_URI=mongodb+srv://anacarolinagrcia_db_user:SUA_SENHA@cluster0.3zliwgb.mongodb.net/
+
+⚠️ O formato do .env é bem rígido: NOME=valor
+
+sem espaço antes ou depois do =
+sem aspas, sem crases, sem ponto e vírgula
+
+O MONGO_URI é o nome da gaveta do cofre. Você vai usar esse nome no próximo passo.
+
+Passo 3: Fazer o servidor.js usar o cofre
+
+A) Na primeiríssima linha do servidor.js (antes de todos os require), coloque:
+
+js
+require('dotenv').config();   // abre o cofre (.env)
+
+B) Troque a linha da uri por:
+
+js
+const uri = process.env.MONGO_URI;   // pega a string de dentro do cofre
+
+O começo do arquivo fica assim:
+
+js
+require('dotenv').config();
+
+var http = require('http');
+var express = require('express');
+var colors = require('colors');
+var bodyParser = require('body-parser');
+var mongodb = require('mongodb');
+
+var app = express();
+
+// ===== Conectar ao MongoDB =====
+const MongoClient = mongodb.MongoClient;
+const uri = process.env.MONGO_URI;
+const client = new MongoClient(uri, { useNewUrlParser: true });
+
+Traduzindo:
+
+require('dotenv').config() → “leia o arquivo .env e guarde o que tem lá dentro”
+process.env → o lugar onde ficam essas configurações guardadas
+process.env.MONGO_URI → “me dá o valor que está com o nome MONGO_URI”
+Passo 4: Testar (antes de subir!)
+Salve tudo, depois Ctrl + C e node servidor.js.
+Acesse http://localhost/blog. Os posts precisam continuar aparecendo.
+
+Pode aparecer no terminal uma linha parecida com [dotenv@...] injecting env (1) from .env. É normal e significa que deu certo: o (1) indica que ele leu 1 variável do cofre.
+
+Se der erro na linha da uri (algo com undefined ou Invalid scheme), o cofre não foi aberto. Confira:
+
+se o nome do arquivo é exatamente .env (e não .env.txt)
+se ele está dentro de Servidor, ao lado do servidor.js
+se o require('dotenv').config(); está na primeira linha
+se você rodou o node servidor.js de dentro de Servidor
+
+Passo 5: Configurar o porteiro (.gitignore)
+
+Você já tem um .gitignore dentro de Servidor. Abra e deixe com estas duas linhas:
+
+node_modules/
+.env
+node_modules/ → “não envie essa pasta”
+.env → “não envie o cofre”
+
+💡 Se o seu projeto já estiver ligado ao Git, o VS Code mostra os arquivos ignorados mais apagados (cinza) na barra lateral. É a confirmação visual de que o porteiro está funcionando
+

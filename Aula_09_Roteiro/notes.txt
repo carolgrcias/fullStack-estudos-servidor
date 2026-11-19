@@ -1,0 +1,101 @@
+aula 9 - roteiro:
+
+Esse roteiro é o que você vai repetir toda vez que sentar num computador novo, então vale ter ele bem claro. São 3 partes:
+
+A. Preparar o computador (uma vez por PC)
+B. Criar o projeto (uma vez por projeto)
+C. Rodar o servidor (toda vez que for usar)
+A. Preparar o computador
+
+1. Abrir o terminal
+Abra qualquer pasta, clique com o botão direito num espaço vazio e escolha Abrir no Terminal. Foi o jeito que funcionou da última vez.
+
+2. Ver se o Node está instalado
+
+node -v
+npm -v
+✅ Apareceram números de versão? Pule para a parte B.
+❌ Deu erro? Depende de quem é o computador:
+PC seu: instale pelo site nodejs.org (o instalador normal, de “próximo, próximo”).
+PC da faculdade, sem permissão: use o StackBlitz. O seu projeto da Aula 09 está salvo lá.
+
+⚠️ Se o npm der erro de “execução de scripts desabilitada”, rode o comando abaixo e confirme com S:
+
+Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
+B. Criar o projeto (slides 34 e 35)
+
+1. Criar a pasta do projeto
+No Explorador de Arquivos, clique com o botão direito, escolha Novo → Pasta e dê o nome servidor. Entre nela e abra o terminal ali (botão direito → Abrir no Terminal).
+
+2. Criar o package.json
+
+npm init -y
+
+✅ Aparece o arquivo package.json, a “identidade” do projeto.
+
+3. Instalar os pacotes
+
+npm install express ejs body-parser colors
+
+✅ Aparece a pasta node_modules. Já instalamos também o que a Aula 10 vai usar.
+
+4. Criar as pastas public e views
+Pode ser pelo Explorador de Arquivos (botão direito → Novo → Pasta) ou pelo terminal:
+
+mkdir public
+mkdir views
+
+5. Criar o servidor.js (na pasta servidor, não dentro da public):
+
+js
+var http = require('http');
+var express = require('express');
+var colors = require('colors');
+
+var app = express();
+app.use(express.static('./public'));
+
+var server = http.createServer(app);
+server.listen(3000);
+
+console.log("servidor rodando...".rainbow);
+
+⚠️ Pegadinha do Bloco de Notas: ao salvar, escolha Tipo: Todos os arquivos. Senão o Windows salva como servidor.js.txt, e o Node não encontra o arquivo. Se o PC tiver VS Code, prefira ele: abra a pasta pelo menu File → Open Folder.
+
+6. Criar public/index.html
+
+html
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Início</title>
+</head>
+<body>
+  <h1>Meu servidor está funcionando!</h1>
+</body>
+</html>
+
+No fim, a pasta fica assim:
+
+servidor/
+├── node_modules/
+├── public/
+│   └── index.html
+├── views/
+├── package.json
+└── servidor.js
+C. Rodar o servidor (todo dia)
+Abra o terminal na pasta do projeto (botão direito → Abrir no Terminal).
+Rode:
+node servidor.js
+
+✅ Aparece servidor rodando.... Não feche essa janela.
+
+No navegador, acesse localhost:3000.
+
+Regrinhas de ouro:
+
+- Mudou o servidor.js? Aperte Ctrl + C e rode node servidor.js de novo.
+- Mudou um HTML ou CSS? É só dar F5 no navegador.
+- Levou o projeto para outro PC (sem a node_modules)? Rode npm install antes de tud

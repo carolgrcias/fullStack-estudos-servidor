@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Login</title>
+</head>
+<body>
+
+    <% if (liberado == true) { %>
+        <h1>Bem vindo, <%= user %>!</h1>
+        <p>Acesso Liberado</p>
+    <% } else { %>
+        <h1>Acesso Negado.</h1>
+        <p>Senha ou usuário incorretos.</p>
+    <% } %>
+    
+</body>
+</html>
